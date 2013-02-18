@@ -193,87 +193,52 @@ Lua维护了一个被称为<em>全局环境</em>的环境，这个环境与之�
 
 
 
-<h2>2.3 &ndash; <a name="2.3">Error Handling</a></h2>
+<h2>2.3 &ndash; <a name="2.3">错误处理</a></h2>
 
 <p>
-Because Lua is an embedded extension language,
-all Lua actions start from C&nbsp;code in the host program
-calling a function from the Lua library (see <a href="#lua_pcall"><code>lua_pcall</code></a>).
-Whenever an error occurs during
-the compilation or execution of a Lua chunk,
-control returns to the host,
-which can take appropriate measures
-(such as printing an error message).
+因为Lua是一个嵌入式的扩展语言，所有的Lua操作都是从宿主程序的C代码调用Lua库（参见<a href="#lua_pcall"><code>lua_pcall</code></a>）。当Lua编译或运行的任何时候发生了错误，控制权都会交给宿主，而宿主可以采取一些恰当的措施（譬如打印一条错误信息）。
 
 
 <p>
-Lua code can explicitly generate an error by calling the
-<a href="#pdf-error"><code>error</code></a> function.
-If you need to catch errors in Lua,
-you can use <a href="#pdf-pcall"><code>pcall</code></a> or <a href="#pdf-xpcall"><code>xpcall</code></a>
-to call a given function in <em>protected mode</em>.
+Lua代码可以显式的调用<a href="#pdf-error"><code>error</code></a>函数来捕获一个错误。如果你需要在Lua中捕捉发生的错误，你可以试用<a href="#pdf-pcall"><code>pcall</code></a>函数或者or <a href="#pdf-xpcall"><code>xpcall</code></a>函数，从而在<em>保护模式</em>下调用给定的函数。
 
 
 <p>
-Whenever there is an error,
-an <em>error object</em> (also called an <em>error message</em>)
-is propagated with information about the error.
-Lua itself only generates errors where the error object is a string,
-but programs may generate errors with
-any value for the error object.
+不论何时出现一个错误，
+<em>错误对象</em>（也被称作<em>错误信息</em>）都是衍生于有关这个错误的信息中的。
+Lua本身仅仅生成错误对象为字符串的错误，但是程序可能会生成错误对象为任意值的错误。
 
 
 <p>
-When you use <a href="#pdf-xpcall"><code>xpcall</code></a> or <a href="#lua_pcall"><code>lua_pcall</code></a>,
-you may give a <em>message handler</em>
-to be called in case of errors.
-This function is called with the original error message
-and returns a new error message.
-It is called before the error unwinds the stack,
-so that it can gather more information about the error,
-for instance by inspecting the stack and creating a stack traceback.
-This message handler is still protected by the protected call;
-so, an error inside the message handler
-will call the message handler again.
-If this loop goes on, Lua breaks it and returns an appropriate message.
+当使用<a href="#pdf-xpcall"><code>xpcall</code></a> 或 <a href="#lua_pcall"><code>lua_pcall</code></a>时，
+你可以提供一个<em>消息处理函数</em>以供出错时调用。调用这个函数时，以原始错误消息为参数，然后返回一条新的错误消息。
+因为它是在错误从栈中移除之前调用的，如果通过检查栈结构并创建一个栈回溯，它就能够收集更多关于这个错误的信息了。
+这个消息处理函数仍然是在保护模式下调用的，所以，一个在消息处理函数中的错误将再次调用到这个消息处理函数。
+如果继续循环下去，Lua将会跳出并返回一个合适的消息。
 
 
 
-
-
-<h2>2.4 &ndash; <a name="2.4">Metatables and Metamethods</a></h2>
+<h2>2.4 &ndash; <a name="2.4">元表和元方法</a></h2>
 
 <p>
-Every value in Lua can have a <em>metatable</em>.
-This <em>metatable</em> is an ordinary Lua table
-that defines the behavior of the original value
-under certain special operations.
-You can change several aspects of the behavior
-of operations over a value by setting specific fields in its metatable.
-For instance, when a non-numeric value is the operand of an addition,
-Lua checks for a function in the field "<code>__add</code>" of the value's metatable.
-If it finds one,
-Lua calls this function to perform the addition.
+Lua中的每个值都能够用一个<em>metatable</em>。这个<em>metatable</em>就是一个原始的Lua table，
+它用来定义原始值在特定操作下的行为。你可以通过在一个值的metatable中设置一些特定的域来改变其操作行为的某些特性。
+譬如，当一个非数字的值做加法运算的时候，Lua会检查它的metatable中"<code>__add</code>”域中是否有一个函数。
+如果有这样一个函数的话，Lua就会调用这个函数函数来执行加法运算。
 
 
 <p>
-The keys in a metatable are derived from the <em>event</em> names;
-the corresponding values are called <em>metamethods</em>.
-In the previous example, the event is <code>"add"</code>
-and the metamethod is the function that performs the addition.
+我们称metatable中的键值名为<em>事件</em>，把其中相应的值成为<em>元方法</em>。
+在上一个例子中，事件是<code>"add"</code>，而元方法就是那个执行加法操作的函数。
 
 
 <p>
-You can query the metatable of any value
-using the <a href="#pdf-getmetatable"><code>getmetatable</code></a> function.
+你可以通过<a href="#pdf-getmetatable"><code>getmetatable</code></a>函数来查询任何值的metatable。
 
 
 <p>
-You can replace the metatable of tables
-using the <a href="#pdf-setmetatable"><code>setmetatable</code></a> function.
-You cannot change the metatable of other types from Lua
-(except by using the debug library);
-you must use the C&nbsp;API for that.
+你可以通过<a href="#pdf-setmetatable"><code>setmetatable</code></a>函数来替换table的metatable。
+但是你不能改变其它任何类型的值的metatable（debug库例外）；要那样做的话，你只能使用C API。
 
 
 <p>
