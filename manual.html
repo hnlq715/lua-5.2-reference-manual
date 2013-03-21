@@ -242,104 +242,73 @@ Lua中的每个值都能够用一个<em>metatable</em>。这个<em>metatable</em
 
 
 <p>
-Tables and full userdata have individual metatables
-(although multiple tables and userdata can share their metatables).
-Values of all other types share one single metatable per type;
-that is, there is one single metatable for all numbers,
-one for all strings, etc.
-By default, a value has no metatable,
-but the string library sets a metatable for the string type (see <a href="#6.4">&sect;6.4</a>).
-
+每个table和userdata用于独立的metatables（当然，多个tables和userdata可以共享metatables）。
+所有其他类型的值，每种类型都共享一个metatable。
+也就是说，对于所有的数字来说只有一个metatable，对于字符串来说也是这样，等等。
+缺省情况下，一个值是没有metatable的，但是string库给string类型设置了一个metatable（参见 <a href="#6.4">&sect;6.4</a>）。
 
 <p>
-A metatable controls how an object behaves in arithmetic operations,
-order comparisons, concatenation, length operation, and indexing.
-A metatable also can define a function to be called
-when a userdata or a table is garbage collected.
-When Lua performs one of these operations over a value,
-it checks whether this value has a metatable with the corresponding event.
-If so, the value associated with that key (the metamethod)
-controls how Lua will perform the operation.
-
+一个metatable可以控制一个对象做算数操作、对比操作、连接操作、取长度操作以及取下标操作。
+一个metatable还可以定义一个函数，使得当userdata或table作为垃圾回收时调用它。
+当Lua需要对一个值进行以上任意一个操作时，它回去检查该值中的metatable是否有对应事件。
+如果有的话，键名对应的值（元方法）将会控制Lua如何做这个操作。
 
 <p>
-Metatables control the operations listed next.
-Each operation is identified by its corresponding name.
-The key for each operation is a string with its name prefixed by
-two underscores, '<code>__</code>';
-for instance, the key for operation "add" is the
-string "<code>__add</code>".
-
+Metatables可以控制如下表所示的操作。
+每个操作都用相应的名字来区分。
+每个操作的键名都是用操作名字加上两个下划线‘<code>__<code>’的字符串；
+举例来说，“add”操作的键名就是字符串“<code>__add<code>”。
 
 <p>
-The semantics of these operations is better explained by a Lua function
-describing how the interpreter executes the operation.
-The code shown here in Lua is only illustrative;
-the real behavior is hard coded in the interpreter
-and it is much more efficient than this simulation.
-All functions used in these descriptions
-(<a href="#pdf-rawget"><code>rawget</code></a>, <a href="#pdf-tonumber"><code>tonumber</code></a>, etc.)
-are described in <a href="#6.1">&sect;6.1</a>.
-In particular, to retrieve the metamethod of a given object,
-we use the expression
-
+这些操作的含义能够更好的由Lua函数解释，这个函数描述了Lua解释器是如何执行这个操作的。
+这里展示的Lua代码仅作解说用；实际行为已经硬编码在解释器中，其效率要远远高于模拟这些代码。
+这些用于描述的代码中用到的函数（<a href="#pdf-rawget"><code>rawget</code></a>, <a href="#pdf-tonumber"><code>tonumber</code></a>, 等等.）
+都可以在<a href="#6.1">&sect;6.1</a>中找到。
+特别注意，我们使用这样一个表达式以获取给定对象中的元方法
 <pre>
      metatable(obj)[event]
 </pre><p>
-This should be read as
-
+这个应该被解读为
 <pre>
      rawget(getmetatable(obj) or {}, event)
 </pre><p>
 
-This means that the access to a metamethod does not invoke other metamethods,
-and access to objects with no metatables does not fail
-(it simply results in <b>nil</b>).
-
+也就是说，访问一个元方法不会再触发其他的元方法，而且访问一个没有元方法的对象也不会失败（只是简单的返回<b>nil</b>）。
 
 <p>
-For the unary <code>-</code> and <code>#</code> operators,
-the metamethod is called with a dummy second argument.
-This extra argument is only to simplify Lua's internals;
-it may be removed in future versions and therefore it is not present
-in the following code.
-(For most uses this extra argument is irrelevant.)
-
-
+对于一元操作符<code>-</code>和<code>#</code>来说，其元方法调用时会附带虚拟的第二个参数。
+这个额外的参数仅仅是为了简化Lua的内部逻辑；它也许在以后的版本中去掉，因此就没有在下面的代码中展示出来。
+（对于大多数使用这个额外参数的情况都是不相关的。）
 
 <ul>
 
 <li><b>"add": </b>
-the <code>+</code> operation.
+<code>+</code> 操作.
 
 
 
 <p>
-The function <code>getbinhandler</code> below defines how Lua chooses a handler
-for a binary operation.
-First, Lua tries the first operand.
-If its type does not define a handler for the operation,
-then Lua tries the second operand.
+下面这个函数<code>getbinhandler</code>定义了Lua如何选择一个处理器来作二元操作。
+首先，Lua尝试第一个操作数。如果它的类型没有定义这个操作的处理器，那么Lua会尝试第二个操作数。
 
 <pre>
      function getbinhandler (op1, op2, event)
        return metatable(op1)[event] or metatable(op2)[event]
      end
 </pre><p>
-By using this function,
-the behavior of the <code>op1 + op2</code> is
+通过调用这个函数，<code>op1 + op2</code>的行为就是
 
 <pre>
      function add_event (op1, op2)
        local o1, o2 = tonumber(op1), tonumber(op2)
-       if o1 and o2 then  -- both operands are numeric?
-         return o1 + o2   -- '+' here is the primitive 'add'
-       else  -- at least one of the operands is not numeric
+       if o1 and o2 then  -- 两个操作数都是数字?
+         return o1 + o2   -- 这里的'+' 是原生的 'add'
+       else  -- 至少一个操作数不是数字时
          local h = getbinhandler(op1, op2, "__add")
          if h then
-           -- call the handler with both operands
+           -- 以两个操作数来调用处理器
            return (h(op1, op2))
-         else  -- no handler available: default behavior
+         else  -- 没有处理器: 缺省行为
            error(&middot;&middot;&middot;)
          end
        end
@@ -348,55 +317,56 @@ the behavior of the <code>op1 + op2</code> is
 </li>
 
 <li><b>"sub": </b>
-the <code>-</code> operation.
+<code>-</code> 操作。
 
+行为与“add”操作类似。
 Behavior similar to the "add" operation.
 </li>
 
 <li><b>"mul": </b>
-the <code>*</code> operation.
+<code>*</code> 操作。
 
-Behavior similar to the "add" operation.
+行为与“add”操作类似。
 </li>
 
 <li><b>"div": </b>
-the <code>/</code> operation.
+<code>/</code> 操作。
 
-Behavior similar to the "add" operation.
+行为与“add”操作类似。
 </li>
 
 <li><b>"mod": </b>
-the <code>%</code> operation.
+<code>%</code> 操作。
 
-Behavior similar to the "add" operation,
-with the operation
-<code>o1 - floor(o1/o2)*o2</code> as the primitive operation.
+行为与“add”操作类似，
+它的原生操作是这样的 
+<code>o1 - floor(o1/o2)*o2</code>。
 </li>
 
 <li><b>"pow": </b>
-the <code>^</code> (exponentiation) operation.
+<code>^</code> (幂) 操作。
 
-Behavior similar to the "add" operation,
-with the function <code>pow</code> (from the C&nbsp;math library)
-as the primitive operation.
+行为与“add”操作类似，
+它的原生操作是调用 <code>pow</code> ( C&nbsp;math 库)
+函数。
 </li>
 
 <li><b>"unm": </b>
-the unary <code>-</code> operation.
+一元 <code>-</code> 操作.
 
 
 <pre>
      function unm_event (op)
        local o = tonumber(op)
-       if o then  -- operand is numeric?
-         return -o  -- '-' here is the primitive 'unm'
-       else  -- the operand is not numeric.
-         -- Try to get a handler from the operand
+       if o then  -- 操作数是数字?
+         return -o  -- 这里的'-' 是原生的 'unm'
+       else  -- 操作数不是数字.
+         -- 尝试从操作数中得到处理器
          local h = metatable(op).__unm
          if h then
-           -- call the handler with the operand
+           -- 以操作数为参数调用处理器
            return (h(op))
-         else  -- no handler available: default behavior
+         else  -- 没有处理器：缺省行为
            error(&middot;&middot;&middot;)
          end
        end
@@ -405,14 +375,14 @@ the unary <code>-</code> operation.
 </li>
 
 <li><b>"concat": </b>
-the <code>..</code> (concatenation) operation.
+<code>..</code> (连接) 操作.
 
 
 <pre>
      function concat_event (op1, op2)
        if (type(op1) == "string" or type(op1) == "number") and
           (type(op2) == "string" or type(op2) == "number") then
-         return op1 .. op2  -- primitive string concatenation
+         return op1 .. op2  -- 原生字符串连接
        else
          local h = getbinhandler(op1, op2, "__concat")
          if h then
@@ -426,30 +396,30 @@ the <code>..</code> (concatenation) operation.
 </li>
 
 <li><b>"len": </b>
-the <code>#</code> operation.
+<code>#</code> 操作.
 
 
 <pre>
      function len_event (op)
        if type(op) == "string" then
-         return strlen(op)      -- primitive string length
+         return strlen(op)      -- 原生的取字符串长度
        else
          local h = metatable(op).__len
          if h then
-           return (h(op))       -- call handler with the operand
+           return (h(op))       -- 调用操作数的处理器
          elseif type(op) == "table" then
-           return #op              -- primitive table length
-         else  -- no handler available: error
+           return #op              -- 原生的取table长度
+         else  -- 没有处理器：错误
            error(&middot;&middot;&middot;)
          end
        end
      end
 </pre><p>
-See <a href="#3.4.6">&sect;3.4.6</a> for a description of the length of a table.
+关于table的长度参见 <a href="#3.4.6">&sect;3.4.6</a>。
 </li>
 
 <li><b>"eq": </b>
-the <code>==</code> operation.
+<code>==</code> 操作。
 
 The function <code>getequalhandler</code> defines how Lua chooses a metamethod
 for equality.
